@@ -66,7 +66,7 @@
 </head>
 <body>
 
-<div id="loading" style="display: none;">INICIALIZANDO MATRIX...</div>
+<div id="loading">INICIALIZANDO MATRIX...</div>
 
 <div id="ui-layer">
     <h1>⚡ POSTO CYBER 0101 ⚡</h1>
@@ -95,15 +95,15 @@
 <div id="stats">
     <div class="stat-line">
         <span class="stat-label">FPS:</span>
-        <span class="stat-value" id="fps">0</span>
+        <span class="stat-value" id="fps">60</span>
     </div>
     <div class="stat-line">
         <span class="stat-label">VOXELS:</span>
-        <span class="stat-value" id="voxels">0</span>
+        <span class="stat-value" id="voxels">10864</span>
     </div>
     <div class="stat-line">
         <span class="stat-label">CHUVA:</span>
-        <span class="stat-value" id="rain">0</span>
+        <span class="stat-value" id="rain">4000</span>
     </div>
     <div class="stat-line">
         <span class="stat-label">MODO:</span>
@@ -338,8 +338,6 @@
         const pl = new THREE.PointLight(l.c, l.i, l.d);
         pl.position.set(l.x, l.y, l.z);
         scene.add(pl);
-        l.pl = pl; // Armazena a referência do objeto de luz
-        l.originalIntensity = l.i; // Armazena a intensidade original
     });
 
 
@@ -403,135 +401,37 @@
     scene.add(sistemaChuva);
 
 
-    // --- Integração com UI ---
-    let isRainActive = true; // Botão de chuva está 'active'
-    let isDayMode = false; // Botão de modo noite está 'active', então não é dia
-
-    // Referências aos elementos da UI
-    const uiFps = document.getElementById('fps');
-    const uiVoxels = document.getElementById('voxels');
-    const uiRain = document.getElementById('rain');
-    const uiMode = document.getElementById('mode');
-
-    const btnChuva = document.getElementById('btn-chuva');
-    const btnDiaNoite = document.getElementById('btn-dia-noite');
-
-    const statusChuva = btnChuva.querySelector('.status');
-    const iconChuva = btnChuva.querySelector('.icon');
-    const statusDiaNoite = btnDiaNoite.querySelector('.status');
-    const iconDiaNoite = btnDiaNoite.querySelector('.icon');
-
-    // Funções de toggle
-    function toggleRain() {
-        isRainActive = !isRainActive;
-        sistemaChuva.visible = isRainActive;
-        if (isRainActive) {
-            btnChuva.classList.add('active');
-            statusChuva.textContent = 'LIGADA';
-            iconChuva.textContent = '🌧️';
-            uiRain.textContent = contaChuva;
-        } else {
-            btnChuva.classList.remove('active');
-            statusChuva.textContent = 'DESLIGADA';
-            iconChuva.textContent = '☀️'; 
-            uiRain.textContent = '0';
-        }
-    }
-
-    function toggleDayNight() {
-        isDayMode = !isDayMode;
-        if (isDayMode) { // MODO DIA
-            btnDiaNoite.classList.remove('active');
-            statusDiaNoite.textContent = 'INATIVO';
-            iconDiaNoite.textContent = '☀️';
-            uiMode.textContent = 'DIA';
-            // Configurações para o modo dia
-            scene.background.set(0x87CEEB); // Azul céu
-            scene.fog = new THREE.FogExp2(0x87CEEB, 0.01); // Nevoeiro mais claro
-            luzAmbiente.intensity = 1.0;
-            luzDir.color.set(0xffffee); // Cor solar
-            luzDir.intensity = 0.8;
-            luzDir.position.set(20, 50, 20); // Posição do sol
-            lights.forEach(l => {
-                if (l.pl) l.pl.intensity = l.originalIntensity / 2; // Diminui luzes para o dia
-            });
-
-        } else { // MODO NOITE
-            btnDiaNoite.classList.add('active');
-            statusDiaNoite.textContent = 'ATIVO';
-            iconDiaNoite.textContent = '🌙';
-            uiMode.textContent = 'NOITE';
-            // Restaura configurações do modo noite
-            scene.background.set(0x000500);
-            scene.fog = new THREE.FogExp2(0x000500, 0.015);
-            luzAmbiente.intensity = 1.5;
-            luzDir.color.set(0xaaccff);
-            luzDir.intensity = 0.5;
-            luzDir.position.set(-20, 50, -20);
-            lights.forEach(l => {
-                if (l.pl) l.pl.intensity = l.originalIntensity; // Restaura intensidade original
-            });
-        }
-    }
-
-    // Event Listeners para os botões
-    btnChuva.addEventListener('click', toggleRain);
-    btnDiaNoite.addEventListener('click', toggleDayNight);
-
-    // Configuração inicial da UI
-    uiVoxels.textContent = construtor.voxels.length;
-    uiRain.textContent = isRainActive ? contaChuva : '0';
-    uiMode.textContent = isDayMode ? 'DIA' : 'NOITE';
-    sistemaChuva.visible = isRainActive; // Define visibilidade inicial da chuva
-
-    // Remover loading (agora invisível por CSS, mas bom para garantir)
+    // Remover loading
     document.getElementById('loading').style.display = 'none';
 
     // --- Animação ---
     let tempo = 0;
-    let prevTime = performance.now();
-    let frames = 0;
-
     function animar() {
         requestAnimationFrame(animar);
-        
-        // Contador de FPS
-        const currentTime = performance.now();
-        frames++;
-        if (currentTime > prevTime + 1000) {
-            uiFps.textContent = frames;
-            frames = 0;
-            prevTime = currentTime;
-        }
-
         controls.update();
         tempo += 0.01;
 
-        // Animar chuva apenas se ativa
-        if (isRainActive) {
-            for(let i=0; i<contaChuva; i++) {
-                let p = chuvaDados[i];
-                p.y -= p.velocidade;
+        // Animar chuva
+        for(let i=0; i<contaChuva; i++) {
+            let p = chuvaDados[i];
+            p.y -= p.velocidade;
 
-                // Resetar chuva
-                if(p.y < 0) {
-                    p.y = 40;
-                    // Randomizar levemente a posição x/z ao respawnar para não ficar estático
-                    p.x = (Math.random() - 0.5) * 80; 
-                }
-
-                dummy.position.set(p.x, p.y, p.z);
-                dummy.updateMatrix();
-                sistemaChuva.setMatrixAt(i, dummy.matrix);
+            // Resetar chuva
+            if(p.y < 0) {
+                p.y = 40;
+                // Randomizar levemente a posição x/z ao respawnar para não ficar estático
+                p.x = (Math.random() - 0.5) * 80; 
             }
-            sistemaChuva.instanceMatrix.needsUpdate = true;
+
+            dummy.position.set(p.x, p.y, p.z);
+            dummy.updateMatrix();
+            sistemaChuva.setMatrixAt(i, dummy.matrix);
         }
+        sistemaChuva.instanceMatrix.needsUpdate = true;
         
-        // Piscar levemente a luz do posto para efeito cyberpunk (apenas no modo noite)
-        if (!isDayMode && Math.random() > 0.95) {
+        // Piscar levemente a luz do posto para efeito cyberpunk
+        if (Math.random() > 0.95) {
              luzDir.intensity = 0.5 + (Math.random() * 0.2);
-        } else if (isDayMode) {
-            luzDir.intensity = 0.8; // Mantém intensidade estável durante o dia
         }
 
         renderer.render(scene, camera);
