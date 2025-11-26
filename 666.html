@@ -1,49 +1,120 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Posto Voxel Matrix</title>
+    <title>Posto Voxel Matrix - Controles Cyberpunk</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Consolas', 'Courier New', monospace; }
-        #canvas-container { width: 100vw; height: 100vh; }
-        #ui-layer {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: #0f0;
-            background: rgba(0, 20, 0, 0.8);
-            border: 1px solid #0f0;
-            padding: 15px;
-            border-radius: 4px;
-            box-shadow: 0 0 10px #0f0;
-            pointer-events: none;
+        @charset "utf-8";
+
+        * { margin: 0px; padding: 0px; box-sizing: border-box; }
+
+        body { margin: 0px; overflow: hidden; background: linear-gradient(rgb(0, 0, 0) 0%, rgb(10, 0, 21) 50%, rgb(0, 5, 16) 100%); font-family: "Courier New", monospace; }
+
+        #canvas-container { width: 100vw; height: 100vh; position: relative; }
+
+        #ui-layer { position: absolute; top: 20px; left: 20px; color: rgb(0, 255, 65); background: linear-gradient(135deg, rgba(0, 20, 0, 0.9), rgba(0, 40, 20, 0.8)); border: 2px solid rgb(0, 255, 65); padding: 20px; border-radius: 8px; box-shadow: rgba(0, 255, 65, 0.5) 0px 0px 20px, rgba(0, 255, 65, 0.1) 0px 0px 15px inset; pointer-events: none; backdrop-filter: blur(5px); z-index: 100; }
+
+        h1 { margin: 0px 0px 10px; font-size: 1.5rem; text-transform: uppercase; letter-spacing: 3px; text-shadow: rgb(0, 255, 65) 0px 0px 10px; animation: 3s ease 0s infinite normal none running glitch; }
+
+        @keyframes glitch { 
+            0%, 96% { text-shadow: rgb(0, 255, 65) 0px 0px 10px; }
+            97% { text-shadow: rgb(255, 0, 255) 2px 0px 10px, rgb(0, 255, 255) -2px 0px 10px; }
+            98% { text-shadow: rgb(255, 0, 255) -2px 0px 10px, rgb(0, 255, 255) 2px 0px 10px; }
+            99%, 100% { text-shadow: rgb(0, 255, 65) 0px 0px 10px; }
         }
-        h1 { margin: 0 0 5px 0; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 2px; }
-        p { margin: 0; font-size: 0.8rem; opacity: 0.8; }
-        #loading {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            color: #000;
-            background: #0f0;
-            padding: 20px 40px;
-            font-weight: bold;
-            font-family: monospace;
-            box-shadow: 0 0 20px #0f0;
-            z-index: 10;
+
+        p { margin: 5px 0px; font-size: 0.85rem; opacity: 0.9; color: rgb(0, 255, 136); }
+
+        .separator { height: 1px; background: linear-gradient(90deg, transparent, rgb(0, 255, 65), transparent); margin: 10px 0px; }
+
+        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); color: rgb(0, 0, 0); background: linear-gradient(135deg, rgb(0, 255, 65), rgb(0, 204, 51)); padding: 30px 60px; font-weight: bold; font-family: "Courier New", monospace; font-size: 1.2rem; box-shadow: rgba(0, 255, 65, 0.8) 0px 0px 40px, rgba(0, 0, 0, 0.2) 0px 0px 20px inset; z-index: 9999; border-radius: 4px; letter-spacing: 2px; animation: 1.5s ease 0s infinite normal none running pulse; }
+
+        @keyframes pulse { 
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.05); }
         }
+
+        #stats { position: absolute; bottom: 20px; right: 20px; color: rgb(0, 255, 65); background: rgba(0, 20, 0, 0.8); border: 1px solid rgb(0, 255, 65); padding: 15px; border-radius: 4px; font-size: 0.8rem; box-shadow: rgba(0, 255, 65, 0.3) 0px 0px 15px; pointer-events: none; z-index: 100; }
+
+        .stat-line { margin: 3px 0px; display: flex; justify-content: space-between; gap: 20px; }
+
+        .stat-label { opacity: 0.7; }
+
+        .stat-value { font-weight: bold; color: rgb(0, 255, 255); text-shadow: rgb(0, 255, 255) 0px 0px 5px; }
+
+        #controls { position: absolute; top: 20px; right: 20px; display: flex; flex-direction: column; gap: 15px; z-index: 200; }
+
+        .control-btn { background: linear-gradient(135deg, rgba(0, 20, 0, 0.95), rgba(0, 40, 20, 0.9)); border: 2px solid rgb(0, 255, 65); color: rgb(0, 255, 65); padding: 15px 25px; font-family: "Courier New", monospace; font-size: 0.9rem; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; cursor: pointer; border-radius: 6px; box-shadow: rgba(0, 255, 65, 0.3) 0px 0px 20px, rgba(0, 255, 65, 0.1) 0px 0px 10px inset; transition: 0.3s; position: relative; overflow: hidden; pointer-events: auto; }
+
+        .control-btn::before { content: ""; position: absolute; top: 50%; left: 50%; width: 0px; height: 0px; border-radius: 50%; background: rgba(0, 255, 65, 0.3); transform: translate(-50%, -50%); transition: width 0.3s, height 0.3s; }
+
+        .control-btn:hover { border-color: rgb(0, 255, 255); color: rgb(0, 255, 255); box-shadow: rgba(0, 255, 255, 0.5) 0px 0px 30px, rgba(0, 255, 255, 0.2) 0px 0px 15px inset; transform: translateY(-2px); }
+
+        .control-btn:hover::before { width: 300px; height: 300px; }
+
+        .control-btn:active { transform: translateY(0px); box-shadow: rgba(0, 255, 65, 0.5) 0px 0px 15px, rgba(0, 0, 0, 0.3) 0px 0px 20px inset; }
+
+        .control-btn.active { background: linear-gradient(135deg, rgba(0, 80, 0, 0.95), rgba(0, 100, 50, 0.9)); border-color: rgb(0, 255, 136); color: rgb(0, 255, 136); box-shadow: rgba(0, 255, 136, 0.6) 0px 0px 25px, rgba(0, 255, 136, 0.2) 0px 0px 15px inset; }
+
+        .control-btn.disabled { background: linear-gradient(135deg, rgba(40, 0, 0, 0.95), rgba(60, 0, 0, 0.9)); border-color: rgb(255, 0, 68); color: rgb(255, 0, 68); box-shadow: rgba(255, 0, 68, 0.3) 0px 0px 20px, rgba(255, 0, 68, 0.1) 0px 0px 10px inset; }
+
+        .control-btn .icon { display: inline-block; margin-right: 8px; font-size: 1.2rem; }
+
+        .control-btn .status { display: block; font-size: 0.7rem; opacity: 0.7; margin-top: 3px; letter-spacing: 1px; }
     </style>
 </head>
 <body>
 
-<div id="loading">CARREGANDO A MATRIX...</div>
+<div id="loading" style="display: none;">INICIALIZANDO MATRIX...</div>
+
 <div id="ui-layer">
-    <h1>Posto 0101</h1>
-    <p>MOUSE ESQUERDO: ORBITAR</p>
-    <p>MOUSE DIREITO: PAN</p>
-    <p>SCROLL: ZOOM</p>
+    <h1>⚡ POSTO CYBER 0101 ⚡</h1>
+    <div class="separator"></div>
+    <p>🖱️ MOUSE ESQ: ORBITAR CÂMERA</p>
+    <p>🖱️ MOUSE DIR: MOVER VISÃO</p>
+    <p>🖱️ SCROLL: ZOOM IN/OUT</p>
+    <div class="separator"></div>
+    <p style="font-size: 0.7rem; opacity: 0.6;">SISTEMA: OPERACIONAL</p>
 </div>
+
+<div id="controls">
+    <button id="btn-chuva" class="control-btn active">
+        <span class="icon">🌧️</span>
+        <span>CHUVA MATRIX</span>
+        <span class="status">LIGADA</span>
+    </button>
+
+    <button id="btn-dia-noite" class="control-btn">
+        <span class="icon">🌙</span>
+        <span>MODO NOITE</span>
+        <span class="status">ATIVO</span>
+    </button>
+</div>
+
+<div id="stats">
+    <div class="stat-line">
+        <span class="stat-label">FPS:</span>
+        <span class="stat-value" id="fps">0</span>
+    </div>
+    <div class="stat-line">
+        <span class="stat-label">VOXELS:</span>
+        <span class="stat-value" id="voxels">0</span>
+    </div>
+    <div class="stat-line">
+        <span class="stat-label">CHUVA:</span>
+        <span class="stat-value" id="rain">0</span>
+    </div>
+    <div class="stat-line">
+        <span class="stat-label">MODO:</span>
+        <span class="stat-value" id="mode">NOITE</span>
+    </div>
+    <div class="stat-line">
+        <span class="stat-label">STATUS:</span>
+        <span class="stat-value" style="color: #00ff41;">ONLINE</span>
+    </div>
+</div>
+
 <div id="canvas-container"></div>
 
 <!-- Three.js e OrbitControls -->
@@ -267,6 +338,8 @@
         const pl = new THREE.PointLight(l.c, l.i, l.d);
         pl.position.set(l.x, l.y, l.z);
         scene.add(pl);
+        l.pl = pl; // Armazena a referência do objeto de luz
+        l.originalIntensity = l.i; // Armazena a intensidade original
     });
 
 
@@ -330,37 +403,135 @@
     scene.add(sistemaChuva);
 
 
-    // Remover loading
+    // --- Integração com UI ---
+    let isRainActive = true; // Botão de chuva está 'active'
+    let isDayMode = false; // Botão de modo noite está 'active', então não é dia
+
+    // Referências aos elementos da UI
+    const uiFps = document.getElementById('fps');
+    const uiVoxels = document.getElementById('voxels');
+    const uiRain = document.getElementById('rain');
+    const uiMode = document.getElementById('mode');
+
+    const btnChuva = document.getElementById('btn-chuva');
+    const btnDiaNoite = document.getElementById('btn-dia-noite');
+
+    const statusChuva = btnChuva.querySelector('.status');
+    const iconChuva = btnChuva.querySelector('.icon');
+    const statusDiaNoite = btnDiaNoite.querySelector('.status');
+    const iconDiaNoite = btnDiaNoite.querySelector('.icon');
+
+    // Funções de toggle
+    function toggleRain() {
+        isRainActive = !isRainActive;
+        sistemaChuva.visible = isRainActive;
+        if (isRainActive) {
+            btnChuva.classList.add('active');
+            statusChuva.textContent = 'LIGADA';
+            iconChuva.textContent = '🌧️';
+            uiRain.textContent = contaChuva;
+        } else {
+            btnChuva.classList.remove('active');
+            statusChuva.textContent = 'DESLIGADA';
+            iconChuva.textContent = '☀️'; 
+            uiRain.textContent = '0';
+        }
+    }
+
+    function toggleDayNight() {
+        isDayMode = !isDayMode;
+        if (isDayMode) { // MODO DIA
+            btnDiaNoite.classList.remove('active');
+            statusDiaNoite.textContent = 'INATIVO';
+            iconDiaNoite.textContent = '☀️';
+            uiMode.textContent = 'DIA';
+            // Configurações para o modo dia
+            scene.background.set(0x87CEEB); // Azul céu
+            scene.fog = new THREE.FogExp2(0x87CEEB, 0.01); // Nevoeiro mais claro
+            luzAmbiente.intensity = 1.0;
+            luzDir.color.set(0xffffee); // Cor solar
+            luzDir.intensity = 0.8;
+            luzDir.position.set(20, 50, 20); // Posição do sol
+            lights.forEach(l => {
+                if (l.pl) l.pl.intensity = l.originalIntensity / 2; // Diminui luzes para o dia
+            });
+
+        } else { // MODO NOITE
+            btnDiaNoite.classList.add('active');
+            statusDiaNoite.textContent = 'ATIVO';
+            iconDiaNoite.textContent = '🌙';
+            uiMode.textContent = 'NOITE';
+            // Restaura configurações do modo noite
+            scene.background.set(0x000500);
+            scene.fog = new THREE.FogExp2(0x000500, 0.015);
+            luzAmbiente.intensity = 1.5;
+            luzDir.color.set(0xaaccff);
+            luzDir.intensity = 0.5;
+            luzDir.position.set(-20, 50, -20);
+            lights.forEach(l => {
+                if (l.pl) l.pl.intensity = l.originalIntensity; // Restaura intensidade original
+            });
+        }
+    }
+
+    // Event Listeners para os botões
+    btnChuva.addEventListener('click', toggleRain);
+    btnDiaNoite.addEventListener('click', toggleDayNight);
+
+    // Configuração inicial da UI
+    uiVoxels.textContent = construtor.voxels.length;
+    uiRain.textContent = isRainActive ? contaChuva : '0';
+    uiMode.textContent = isDayMode ? 'DIA' : 'NOITE';
+    sistemaChuva.visible = isRainActive; // Define visibilidade inicial da chuva
+
+    // Remover loading (agora invisível por CSS, mas bom para garantir)
     document.getElementById('loading').style.display = 'none';
 
     // --- Animação ---
     let tempo = 0;
+    let prevTime = performance.now();
+    let frames = 0;
+
     function animar() {
         requestAnimationFrame(animar);
+        
+        // Contador de FPS
+        const currentTime = performance.now();
+        frames++;
+        if (currentTime > prevTime + 1000) {
+            uiFps.textContent = frames;
+            frames = 0;
+            prevTime = currentTime;
+        }
+
         controls.update();
         tempo += 0.01;
 
-        // Animar chuva
-        for(let i=0; i<contaChuva; i++) {
-            let p = chuvaDados[i];
-            p.y -= p.velocidade;
+        // Animar chuva apenas se ativa
+        if (isRainActive) {
+            for(let i=0; i<contaChuva; i++) {
+                let p = chuvaDados[i];
+                p.y -= p.velocidade;
 
-            // Resetar chuva
-            if(p.y < 0) {
-                p.y = 40;
-                // Randomizar levemente a posição x/z ao respawnar para não ficar estático
-                p.x = (Math.random() - 0.5) * 80; 
+                // Resetar chuva
+                if(p.y < 0) {
+                    p.y = 40;
+                    // Randomizar levemente a posição x/z ao respawnar para não ficar estático
+                    p.x = (Math.random() - 0.5) * 80; 
+                }
+
+                dummy.position.set(p.x, p.y, p.z);
+                dummy.updateMatrix();
+                sistemaChuva.setMatrixAt(i, dummy.matrix);
             }
-
-            dummy.position.set(p.x, p.y, p.z);
-            dummy.updateMatrix();
-            sistemaChuva.setMatrixAt(i, dummy.matrix);
+            sistemaChuva.instanceMatrix.needsUpdate = true;
         }
-        sistemaChuva.instanceMatrix.needsUpdate = true;
         
-        // Piscar levemente a luz do posto para efeito cyberpunk
-        if (Math.random() > 0.95) {
+        // Piscar levemente a luz do posto para efeito cyberpunk (apenas no modo noite)
+        if (!isDayMode && Math.random() > 0.95) {
              luzDir.intensity = 0.5 + (Math.random() * 0.2);
+        } else if (isDayMode) {
+            luzDir.intensity = 0.8; // Mantém intensidade estável durante o dia
         }
 
         renderer.render(scene, camera);
