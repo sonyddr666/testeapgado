@@ -3,48 +3,237 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Posto de Combustível</title>
+    <title>Voxel Pagoda Garden</title>
     <style>
         body {
             margin: 0;
-            padding: 0;
+            overflow: hidden; /* Oculta as barras de rolagem */
             font-family: Arial, sans-serif;
-            background-image: url('https://images.unsplash.com/photo-1579227114347-c0e8178129d2?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: #ffffff; /* White text for contrast */
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7); /* Text shadow for readability */
-            flex-direction: column;
+            background-color: #add8e6; /* Cor de fundo azul claro para o céu */
         }
-
-        .container {
-            background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background for text */
-            padding: 30px 50px;
-            border-radius: 10px;
-            text-align: center;
-        }
-
-        h1 {
-            font-size: 3em;
-            margin-bottom: 20px;
-        }
-
-        p {
-            font-size: 1.2em;
-            line-height: 1.5;
+        canvas {
+            display: block;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Bem-vindo ao Posto de Combustível!</h1>
-        <p>Qualidade e serviço para o seu veículo.</p>
-        <p>Abasteça conosco e siga viagem com tranquilidade.</p>
-    </div>
+    <script type="module">
+        import * as THREE from 'https://unpkg.com/three@0.126.0/build/three.module.js';
+        import { OrbitControls } from 'https://unpkg.com/three@0.126.0/examples/jsm/controls/OrbitControls.js';
+
+        // Configuração da cena
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x87CEEB); // Cor do céu
+        document.body.appendChild(renderer.domElement);
+
+        // OrbitControls para navegação do usuário
+        const controls = new OrbitControls(camera, renderer.domElement);
+        camera.position.set(30, 30, 50); // Posição inicial da câmera
+        controls.target.set(0, 5, 0);    // Ponto para onde a câmera está olhando (base do pagode)
+        controls.update();
+
+        // Iluminação
+        const ambientLight = new THREE.AmbientLight(0x404040, 2); // Luz ambiente suave
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1); // Luz direcional para sombras
+        directionalLight.position.set(50, 50, 50);
+        directionalLight.castShadow = true;
+        scene.add(directionalLight);
+
+        // Grupo para conter todos os voxels
+        const voxelGroup = new THREE.Group();
+        scene.add(voxelGroup);
+
+        const voxelSize = 1; // Tamanho de cada voxel
+
+        // Função auxiliar para criar um voxel
+        function createVoxel(x, y, z, color) {
+            const geometry = new THREE.BoxGeometry(voxelSize, voxelSize, voxelSize);
+            const material = new THREE.MeshLambertMaterial({ color: color });
+            const voxel = new THREE.Mesh(geometry, material);
+            voxel.position.set(x * voxelSize, y * voxelSize, z * voxelSize);
+            voxelGroup.add(voxel);
+        }
+
+        // Paleta de cores para os elementos da cena
+        const Colors = {
+            grass: 0x6B8E23, // Verde Oliva
+            pagodaWood: 0x8B4513, // Marrom Sela
+            pagodaRoof: 0xA0522D, // Siena
+            pagodaTrim: 0xDAA520, // Vara-de-ouro
+            cherryBlossomPink: 0xFFB6C1, // Rosa Claro
+            cherryBlossomRed: 0xFF69B4, // Rosa Choque
+            leafGreen: 0x228B22, // Verde Floresta
+            trunkBrown: 0x5C4033, // Marrom Escuro
+            waterBlue: 0x4682B4, // Azul Aço
+            stoneGray: 0x808080 // Cinza
+        };
+
+        // --- Geração da Cena ---
+
+        // Plano do chão (gramado)
+        const groundWidth = 60;
+        const groundDepth = 60;
+        for (let x = -groundWidth / 2; x < groundWidth / 2; x++) {
+            for (let z = -groundDepth / 2; z < groundDepth / 2; z++) {
+                createVoxel(x, -0.5, z, Colors.grass); // Nível do chão
+            }
+        }
+
+        // Estrutura do Pagode
+        function createPagoda(baseX, baseY, baseZ) {
+            // Plataforma base
+            const platformSize = 10;
+            for (let x = -platformSize / 2; x < platformSize / 2; x++) {
+                for (let z = -platformSize / 2; z < platformSize / 2; z++) {
+                    createVoxel(baseX + x, baseY + 0, baseZ + z, Colors.pagodaWood);
+                }
+            }
+
+            // Camadas do pagode
+            const numTiers = 3;
+            let currentY = baseY + 1;
+            let currentTierSize = 8;
+            for (let i = 0; i < numTiers; i++) {
+                // Chão da camada
+                for (let x = -(currentTierSize / 2 - 0.5); x <= (currentTierSize / 2 - 0.5); x++) {
+                    for (let z = -(currentTierSize / 2 - 0.5); z <= (currentTierSize / 2 - 0.5); z++) {
+                        createVoxel(baseX + x, currentY, baseZ + z, Colors.pagodaWood);
+                    }
+                }
+                // Paredes da camada
+                for (let yOffset = 1; yOffset <= 1; yOffset++) {
+                    for (let x = -(currentTierSize / 2); x <= (currentTierSize / 2); x++) {
+                        createVoxel(baseX + x, currentY + yOffset, baseZ - currentTierSize / 2, Colors.pagodaWood); // Parede frontal
+                        createVoxel(baseX + x, currentY + yOffset, baseZ + currentTierSize / 2, Colors.pagodaWood); // Parede traseira
+                    }
+                    for (let z = -(currentTierSize / 2) + 1; z <= (currentTierSize / 2) - 1; z++) { // Evita cantos duplicados
+                        createVoxel(baseX - currentTierSize / 2, currentY + yOffset, baseZ + z, Colors.pagodaWood); // Parede esquerda
+                        createVoxel(baseX + currentTierSize / 2, currentY + yOffset, baseZ + z, Colors.pagodaWood); // Parede direita
+                    }
+                }
+
+                // Telhado da camada
+                let roofBase = currentY + 2;
+                let roofSize = currentTierSize + 2;
+                for (let x = -roofSize / 2; x <= roofSize / 2; x++) {
+                    for (let z = -roofSize / 2; z <= roofSize / 2; z++) {
+                        createVoxel(baseX + x, roofBase, baseZ + z, Colors.pagodaRoof);
+                        // Camadas internas para efeito de curvatura
+                        if (Math.abs(x) < roofSize/2 && Math.abs(z) < roofSize/2 && (Math.abs(x) + Math.abs(z)) < roofSize/2 + 1) {
+                            createVoxel(baseX + x, roofBase + 1, baseZ + z, Colors.pagodaRoof);
+                        }
+                    }
+                }
+                // Detalhe superior do telhado
+                for (let x = -(roofSize/2 -1); x <= (roofSize/2 -1); x++) {
+                    for (let z = -(roofSize/2 -1); z <= (roofSize/2 -1); z++) {
+                        if (Math.abs(x) + Math.abs(z) < (roofSize/2 -1) + 0.5) {
+                             createVoxel(baseX + x, roofBase + 2, baseZ + z, Colors.pagodaRoof);
+                        }
+                    }
+                }
+
+                currentY += 4; // Move para cima para a próxima camada (chão + parede + telhado)
+                currentTierSize -= 2; // Reduz o tamanho da próxima camada
+                if (currentTierSize < 4) currentTierSize = 4; // Tamanho mínimo para a camada superior
+            }
+
+            // Espiral no topo do pagode
+            let spireBaseY = currentY -1; // Topo do último telhado
+            for (let y = 0; y < 8; y++) {
+                createVoxel(baseX, spireBaseY + y, baseZ, Colors.pagodaTrim);
+            }
+            createVoxel(baseX, spireBaseY + 8, baseZ, 0xFFD700); // Ponta dourada
+        }
+
+        createPagoda(0, 0.5, 0); // Posiciona o pagode ligeiramente acima do chão, no centro
+
+        // Árvores e Cerejeiras em flor
+        function createTree(baseX, baseY, baseZ, isCherry = false) {
+            // Tronco
+            const trunkHeight = isCherry ? 5 : (Math.random() * 2 + 5); // Altura aleatória entre 5 e 7
+            for (let y = 0; y < trunkHeight; y++) {
+                createVoxel(baseX, baseY + y, baseZ, Colors.trunkBrown);
+                if (Math.random() > 0.8) createVoxel(baseX + 1, baseY + y, baseZ, Colors.trunkBrown); // Pequenos galhos
+                if (Math.random() > 0.8) createVoxel(baseX, baseY + y, baseZ + 1, Colors.trunkBrown);
+            }
+
+            const leafColor = isCherry ? Colors.cherryBlossomPink : Colors.leafGreen;
+            const secondaryLeafColor = isCherry ? Colors.cherryBlossomRed : 0x006400; // Verde Escuro
+
+            // Folhas/Flores
+            const canopyHeight = isCherry ? 4 : (Math.random() * 2 + 4); // Altura da copa entre 4 e 6
+            const canopyRadius = isCherry ? 3 : (Math.random() * 1 + 3); // Raio da copa entre 3 e 4
+            for (let y = 0; y < canopyHeight; y++) {
+                for (let x = -canopyRadius; x <= canopyRadius; x++) {
+                    for (let z = -canopyRadius; z <= canopyRadius; z++) {
+                        // Distribuição esférica com densidade aleatória
+                        if (x * x + y * y / 1.5 + z * z < (canopyRadius * canopyRadius) && Math.random() > 0.3) {
+                            const color = Math.random() > 0.7 ? secondaryLeafColor : leafColor;
+                            createVoxel(baseX + x + Math.random() * 0.5 - 0.25, baseY + trunkHeight -1 + y + Math.random() * 0.5 - 0.25, baseZ + z + Math.random() * 0.5 - 0.25, color);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Posiciona as árvores pelo jardim
+        createTree(-15, 0, -10, false);
+        createTree(10, 0, 15, false);
+        createTree(-20, 0, 20, true); // Cerejeira em flor
+        createTree(18, 0, -18, true); // Cerejeira em flor
+        createTree(-8, 0, 8, false);
+        createTree(22, 0, 0, false);
+        createTree(-12, 0, -20, true); // Cerejeira em flor
+        createTree(5, 0, -22, false);
+        createTree(-25, 0, 5, false);
+        createTree(25, 0, 10, true); // Cerejeira em flor
+
+        // Lagoa de água
+        const pondCenterX = 15;
+        const pondCenterZ = 5;
+        const pondRadius = 6;
+        for (let x = -pondRadius; x <= pondRadius; x++) {
+            for (let z = -pondRadius; z <= pondRadius; z++) {
+                if (x * x + z * z < (pondRadius * pondRadius * 0.9)) { // Formato circular
+                    createVoxel(pondCenterX + x, -0.7, pondCenterZ + z, Colors.waterBlue); // Ligeiramente abaixo do gramado
+                }
+            }
+        }
+        // Pequena ponte sobre a lagoa
+        for (let x = -2; x <= 2; x++) {
+            createVoxel(pondCenterX + x, 0, pondCenterZ + pondRadius - 1, Colors.pagodaWood);
+            createVoxel(pondCenterX + x, 0, pondCenterZ - pondRadius + 1, Colors.pagodaWood);
+        }
+
+        // Caminho levando ao pagode
+        for(let z = -25; z < -5; z++) {
+            createVoxel(0, -0.4, z, Colors.stoneGray);
+            createVoxel(1, -0.4, z, Colors.stoneGray);
+            createVoxel(-1, -0.4, z, Colors.stoneGray);
+        }
+
+
+        // Loop de animação
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update(); // Necessário apenas se controls.enableDamping for true
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Lida com o redimensionamento da janela
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
 </body>
 </html>
