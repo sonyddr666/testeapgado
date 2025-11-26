@@ -1,197 +1,50 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voxel Pagode Garden</title>
+    <title>Posto de Combustível</title>
     <style>
         body {
             margin: 0;
-            overflow: hidden;
-            background-color: #f0f0f0; /* Light background for contrast */
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-image: url('https://images.unsplash.com/photo-1579227114347-c0e8178129d2?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #ffffff; /* White text for contrast */
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7); /* Text shadow for readability */
+            flex-direction: column;
         }
-        canvas {
-            display: block;
+
+        .container {
+            background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background for text */
+            padding: 30px 50px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+
+        p {
+            font-size: 1.2em;
+            line-height: 1.5;
         }
     </style>
 </head>
 <body>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.165.0/three.min.js"></script>
-    <script src="https://unpkg.com/three@0.165.0/examples/js/controls/OrbitControls.js"></script>
-    <script>
-        let scene, camera, renderer, controls;
-
-        function init() {
-            // Scene setup
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87ceeb); // Light blue sky
-
-            // Camera setup
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(20, 20, 20); // Initial camera position
-
-            // Renderer setup
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            document.body.appendChild(renderer.domElement);
-
-            // Controls
-            controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true; // An inertia effect
-            controls.dampingFactor = 0.05;
-            controls.screenSpacePanning = false;
-            controls.maxPolarAngle = Math.PI / 2; // Prevent camera from going below ground
-
-            // Lighting
-            const ambientLight = new THREE.AmbientLight(0x404040, 2); // Soft white ambient light
-            scene.add(ambientLight);
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); // Main light source
-            directionalLight.position.set(10, 20, 10);
-            scene.add(directionalLight);
-
-            // --- Voxel Creation Function ---
-            const voxelGeometry = new THREE.BoxGeometry(1, 1, 1);
-            const voxelMaterials = {}; // Cache materials for efficiency
-            function getVoxelMaterial(color) {
-                const hexColor = typeof color === 'number' ? color : parseInt(color.replace('#', '0x'));
-                if (!voxelMaterials[hexColor]) {
-                    voxelMaterials[hexColor] = new THREE.MeshLambertMaterial({ color: hexColor });
-                }
-                return voxelMaterials[hexColor];
-            }
-
-            function addVoxel(x, y, z, color) {
-                const material = getVoxelMaterial(color);
-                const voxel = new THREE.Mesh(voxelGeometry, material);
-                voxel.position.set(x, y, z);
-                scene.add(voxel);
-                return voxel;
-            }
-
-            // --- Scene Elements (Voxel Art) ---
-
-            // Ground
-            const groundColor = 0x66bb66; // Green
-            const groundSize = 30;
-            for (let x = -Math.floor(groundSize / 2); x < Math.ceil(groundSize / 2); x++) {
-                for (let z = -Math.floor(groundSize / 2); z < Math.ceil(groundSize / 2); z++) {
-                    addVoxel(x, -0.5, z, groundColor);
-                }
-            }
-
-            // Pagode
-            function createPagode(baseX, baseY, baseZ) {
-                const pagodeWoodColor = 0x8b4513; // SaddleBrown
-                const pagodeRoofColor = 0xa04040; // Dark red/brown
-                const pagodeAccentColor = 0xdddd00; // Gold-ish for accents
-
-                const tiers = 3;
-                let currentY = baseY;
-
-                for (let tier = 0; tier < tiers; tier++) {
-                    const tierSize = 7 - tier * 2; // Base dimensions for this tier
-                    const tierHeight = 3;
-
-                    // --- Base structure of the tier ---
-                    for (let x = -Math.floor(tierSize / 2); x <= Math.floor(tierSize / 2); x++) {
-                        for (let z = -Math.floor(tierSize / 2); z <= Math.floor(tierSize / 2); z++) {
-                            for (let y = 0; y < tierHeight; y++) {
-                                // Walls
-                                if (Math.abs(x) === Math.floor(tierSize / 2) || Math.abs(z) === Math.floor(tierSize / 2)) {
-                                    addVoxel(baseX + x, currentY + y, baseZ + z, pagodeWoodColor);
-                                } else if (tier === 0 && y === 0) { // Floor of the first tier
-                                    addVoxel(baseX + x, currentY + y, baseZ + z, pagodeWoodColor);
-                                } else if (y === tierHeight - 1) { // Ceiling/floor of current tier
-                                   addVoxel(baseX + x, currentY + y, baseZ + z, pagodeWoodColor);
-                                }
-                            }
-                        }
-                    }
-
-                    // --- Roof of the tier ---
-                    const roofSize = tierSize + 2; // Roof is wider than the base
-                    const roofHeight = 1;
-                    // Main flat part of the roof
-                    for (let x = -Math.floor(roofSize / 2); x <= Math.floor(roofSize / 2); x++) {
-                        for (let z = -Math.floor(roofSize / 2); z <= Math.floor(roofSize / 2); z++) {
-                            addVoxel(baseX + x, currentY + tierHeight + roofHeight, baseZ + z, pagodeRoofColor);
-                        }
-                    }
-                    // Eaves/curved corners (simplified for voxel)
-                    for (let x = -Math.floor(roofSize / 2); x <= Math.floor(roofSize / 2); x++) {
-                        for (let z = -Math.floor(roofSize / 2); z <= Math.floor(roofSize / 2); z++) {
-                            if (Math.abs(x) === Math.floor(roofSize / 2) || Math.abs(z) === Math.floor(roofSize / 2)) {
-                                addVoxel(baseX + x, currentY + tierHeight + roofHeight + 1, baseZ + z, pagodeRoofColor);
-                            }
-                        }
-                    }
-
-                    if (tier === tiers - 1) { // Topmost tier, add a spire/finial
-                        addVoxel(baseX, currentY + tierHeight + roofHeight + 2, baseZ, pagodeAccentColor);
-                        addVoxel(baseX, currentY + tierHeight + roofHeight + 3, baseZ, pagodeAccentColor);
-                        addVoxel(baseX, currentY + tierHeight + roofHeight + 4, baseZ, pagodeAccentColor);
-                    }
-
-                    currentY += tierHeight + roofHeight + 1; // Move Y up for next tier's base
-                }
-            }
-            createPagode(0, 0, 0); // Call pagode creation
-
-            // Trees (Generic and Cherry Blossom)
-            function createTree(baseX, baseZ, isCherry) {
-                const trunkColor = 0x8B4513; // SaddleBrown
-                const leafColors = isCherry ? [0xffc0cb, 0xffa0af, 0xff69b4] : [0x228B22, 0x3cb371, 0x556b2f]; // Pink or Green shades
-
-                const trunkHeight = Math.floor(Math.random() * 3) + 4; // 4-6 units
-
-                // Trunk
-                for (let y = 0; y < trunkHeight; y++) {
-                    addVoxel(baseX, y, baseZ, trunkColor);
-                }
-
-                // Leaves (simplified blob)
-                const leafSpread = 3;
-                const leafBaseY = trunkHeight - 1;
-                for (let x = -leafSpread; x <= leafSpread; x++) {
-                    for (let z = -leafSpread; z <= leafSpread; z++) {
-                        for (let y = 0; y < leafSpread + 2; y++) {
-                            // Create a roughly spherical shape, denser in the middle
-                            const dist = Math.sqrt(x*x + (y*y)/1.5 + z*z);
-                            if (dist < leafSpread + Math.random() * 0.8) { // Add randomness for more organic shape
-                                const chosenColor = leafColors[Math.floor(Math.random() * leafColors.length)];
-                                addVoxel(baseX + x, leafBaseY + y, baseZ + z, chosenColor);
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Place some trees in the garden
-            createTree(10, 8, false); // Green tree
-            createTree(-8, 12, false); // Green tree
-            createTree(15, -5, true);  // Cherry blossom
-            createTree(-12, -7, true); // Cherry blossom
-            createTree(-5, 5, true);   // Cherry blossom
-            createTree(7, -10, false); // Green tree
-            createTree(-10, 3, true);  // Cherry blossom
-        }
-
-        // Animation loop
-        function animate() {
-            requestAnimationFrame(animate);
-            controls.update(); // Only required if controls.enableDamping or controls.autoRotate are set to true
-            renderer.render(scene, camera);
-        }
-
-        // Handle window resize
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        init();
-        animate();
-    </script>
+    <div class="container">
+        <h1>Bem-vindo ao Posto de Combustível!</h1>
+        <p>Qualidade e serviço para o seu veículo.</p>
+        <p>Abasteça conosco e siga viagem com tranquilidade.</p>
+    </div>
 </body>
 </html>
