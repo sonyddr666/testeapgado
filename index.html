@@ -5,267 +5,193 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voxel Pagode Garden</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: sans-serif; }
-        canvas { display: block; }
-        .info-panel {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(0, 0, 0, 0.5);
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 0.9em;
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #f0f0f0; /* Light background for contrast */
+        }
+        canvas {
+            display: block;
         }
     </style>
 </head>
 <body>
-    <div class="info-panel">
-        Controles:
-        <ul>
-            <li>Arraste o mouse: Girar câmera</li>
-            <li>Scroll do mouse: Zoom</li>
-            <li>Botão direito + arrastar: Panorâmica</li>
-        </ul>
-    </div>
-    <script type="module">
-        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.module.js';
-        import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.150.1/examples/jsm/controls/OrbitControls.js';
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.165.0/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.165.0/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        let scene, camera, renderer, controls;
 
-        // Scene setup
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87CEEB); // Light blue sky
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87ceeb); // Light blue sky
 
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(50, 40, 70); // Adjusted position for better view
-        camera.lookAt(0, 10, 0); // Look at the center
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(20, 20, 20); // Initial camera position
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
 
-        // Controls
-        const controls = new OrbitControls(camera, renderer.domElement);
-        controls.target.set(0, 10, 0); // Focus on the center of the scene
-        controls.update();
+            // Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true; // An inertia effect
+            controls.dampingFactor = 0.05;
+            controls.screenSpacePanning = false;
+            controls.maxPolarAngle = Math.PI / 2; // Prevent camera from going below ground
 
-        // Lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); // Soft overall light
-        scene.add(ambientLight);
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 2); // Soft white ambient light
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); // Main light source
+            directionalLight.position.set(10, 20, 10);
+            scene.add(directionalLight);
 
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); // Main light source
-        directionalLight.position.set(50, 100, 50); // Position the light
-        directionalLight.castShadow = true; // Enable shadows from this light
-        // Configure shadow camera for better shadow quality
-        directionalLight.shadow.mapSize.width = 2048;
-        directionalLight.shadow.mapSize.height = 2048;
-        directionalLight.shadow.camera.near = 0.5;
-        directionalLight.shadow.camera.far = 200;
-        directionalLight.shadow.camera.left = -70;
-        directionalLight.shadow.camera.right = 70;
-        directionalLight.shadow.camera.top = 70;
-        directionalLight.shadow.camera.bottom = -70;
-        scene.add(directionalLight);
-
-        renderer.shadowMap.enabled = true; // Enable shadow mapping on renderer
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
-
-        // Voxel function (using InstancedMesh for better performance with many voxels)
-        const voxelGeometry = new THREE.BoxGeometry(1, 1, 1); // Unit cube geometry
-        const voxelMaterial = new THREE.MeshStandardMaterial(); // Base material for instancing
-
-        const MAX_VOXELS = 150000; // Estimate maximum voxels needed for the scene
-        const instancedMesh = new THREE.InstancedMesh(voxelGeometry, voxelMaterial, MAX_VOXELS);
-        instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); // Matrix data will be updated frequently
-        instancedMesh.castShadow = true; // Voxels will cast shadows
-        instancedMesh.receiveShadow = true; // Voxels will receive shadows
-        scene.add(instancedMesh);
-
-        let voxelCount = 0;
-        const matrix = new THREE.Matrix4();
-        const color = new THREE.Color();
-
-        // Function to add a single voxel to the instanced mesh
-        function addVoxel(x, y, z, hexColor) {
-            if (voxelCount >= MAX_VOXELS) {
-                console.warn("Max voxels reached! Some voxels might not be rendered.");
-                return;
+            // --- Voxel Creation Function ---
+            const voxelGeometry = new THREE.BoxGeometry(1, 1, 1);
+            const voxelMaterials = {}; // Cache materials for efficiency
+            function getVoxelMaterial(color) {
+                const hexColor = typeof color === 'number' ? color : parseInt(color.replace('#', '0x'));
+                if (!voxelMaterials[hexColor]) {
+                    voxelMaterials[hexColor] = new THREE.MeshLambertMaterial({ color: hexColor });
+                }
+                return voxelMaterials[hexColor];
             }
-            matrix.makeTranslation(x, y, z); // Set position of the instance
-            instancedMesh.setMatrixAt(voxelCount, matrix); // Apply matrix
-            instancedMesh.setColorAt(voxelCount, color.setHex(hexColor)); // Set instance color
-            voxelCount++;
-        }
 
-        // Function to create a block of voxels efficiently
-        function createVoxelBlock(startX, startY, startZ, width, height, depth, hexColor) {
-            for (let x = 0; x < width; x++) {
-                for (let y = 0; y < height; y++) {
-                    for (let z = 0; z < depth; z++) {
-                        addVoxel(startX + x, startY + y, startZ + z, hexColor);
+            function addVoxel(x, y, z, color) {
+                const material = getVoxelMaterial(color);
+                const voxel = new THREE.Mesh(voxelGeometry, material);
+                voxel.position.set(x, y, z);
+                scene.add(voxel);
+                return voxel;
+            }
+
+            // --- Scene Elements (Voxel Art) ---
+
+            // Ground
+            const groundColor = 0x66bb66; // Green
+            const groundSize = 30;
+            for (let x = -Math.floor(groundSize / 2); x < Math.ceil(groundSize / 2); x++) {
+                for (let z = -Math.floor(groundSize / 2); z < Math.ceil(groundSize / 2); z++) {
+                    addVoxel(x, -0.5, z, groundColor);
+                }
+            }
+
+            // Pagode
+            function createPagode(baseX, baseY, baseZ) {
+                const pagodeWoodColor = 0x8b4513; // SaddleBrown
+                const pagodeRoofColor = 0xa04040; // Dark red/brown
+                const pagodeAccentColor = 0xdddd00; // Gold-ish for accents
+
+                const tiers = 3;
+                let currentY = baseY;
+
+                for (let tier = 0; tier < tiers; tier++) {
+                    const tierSize = 7 - tier * 2; // Base dimensions for this tier
+                    const tierHeight = 3;
+
+                    // --- Base structure of the tier ---
+                    for (let x = -Math.floor(tierSize / 2); x <= Math.floor(tierSize / 2); x++) {
+                        for (let z = -Math.floor(tierSize / 2); z <= Math.floor(tierSize / 2); z++) {
+                            for (let y = 0; y < tierHeight; y++) {
+                                // Walls
+                                if (Math.abs(x) === Math.floor(tierSize / 2) || Math.abs(z) === Math.floor(tierSize / 2)) {
+                                    addVoxel(baseX + x, currentY + y, baseZ + z, pagodeWoodColor);
+                                } else if (tier === 0 && y === 0) { // Floor of the first tier
+                                    addVoxel(baseX + x, currentY + y, baseZ + z, pagodeWoodColor);
+                                } else if (y === tierHeight - 1) { // Ceiling/floor of current tier
+                                   addVoxel(baseX + x, currentY + y, baseZ + z, pagodeWoodColor);
+                                }
+                            }
+                        }
                     }
+
+                    // --- Roof of the tier ---
+                    const roofSize = tierSize + 2; // Roof is wider than the base
+                    const roofHeight = 1;
+                    // Main flat part of the roof
+                    for (let x = -Math.floor(roofSize / 2); x <= Math.floor(roofSize / 2); x++) {
+                        for (let z = -Math.floor(roofSize / 2); z <= Math.floor(roofSize / 2); z++) {
+                            addVoxel(baseX + x, currentY + tierHeight + roofHeight, baseZ + z, pagodeRoofColor);
+                        }
+                    }
+                    // Eaves/curved corners (simplified for voxel)
+                    for (let x = -Math.floor(roofSize / 2); x <= Math.floor(roofSize / 2); x++) {
+                        for (let z = -Math.floor(roofSize / 2); z <= Math.floor(roofSize / 2); z++) {
+                            if (Math.abs(x) === Math.floor(roofSize / 2) || Math.abs(z) === Math.floor(roofSize / 2)) {
+                                addVoxel(baseX + x, currentY + tierHeight + roofHeight + 1, baseZ + z, pagodeRoofColor);
+                            }
+                        }
+                    }
+
+                    if (tier === tiers - 1) { // Topmost tier, add a spire/finial
+                        addVoxel(baseX, currentY + tierHeight + roofHeight + 2, baseZ, pagodeAccentColor);
+                        addVoxel(baseX, currentY + tierHeight + roofHeight + 3, baseZ, pagodeAccentColor);
+                        addVoxel(baseX, currentY + tierHeight + roofHeight + 4, baseZ, pagodeAccentColor);
+                    }
+
+                    currentY += tierHeight + roofHeight + 1; // Move Y up for next tier's base
                 }
             }
-        }
+            createPagode(0, 0, 0); // Call pagode creation
 
-        // --- Scene Elements --- //
+            // Trees (Generic and Cherry Blossom)
+            function createTree(baseX, baseZ, isCherry) {
+                const trunkColor = 0x8B4513; // SaddleBrown
+                const leafColors = isCherry ? [0xffc0cb, 0xffa0af, 0xff69b4] : [0x228B22, 0x3cb371, 0x556b2f]; // Pink or Green shades
 
-        // Ground: A large green plane made of voxels
-        const groundColor = 0x6B8E23; // Olive green
-        const groundSize = 100;
-        createVoxelBlock(-groundSize / 2, -0.5, -groundSize / 2, groundSize, 1, groundSize, groundColor);
+                const trunkHeight = Math.floor(Math.random() * 3) + 4; // 4-6 units
 
-        // Pagode Structure (voxel representation)
-        const pagodeBaseX = -5;
-        const pagodeBaseZ = -5;
-        const pagodeBaseY = 0.5; // Sit slightly above ground level
-
-        // Base platform of the pagode
-        createVoxelBlock(pagodeBaseX, pagodeBaseY, pagodeBaseZ, 10, 2, 10, 0x8B4513); // Brown wood
-
-        // Tiers of the pagode with decreasing size
-        const tierColors = [0xA52A2A, 0xCD5C5C, 0x8B0000]; // Shades of red/brown for wooden tiers
-        const roofColor = 0x36454F; // Dark grey for roof tiles
-
-        let currentY = pagodeBaseY + 2; // Starting Y for the first tier floor
-        let currentWidth = 10;
-        let currentDepth = 10;
-
-        for (let i = 0; i < 3; i++) { // Create 3 tiers
-            // Floor of the current tier
-            createVoxelBlock(pagodeBaseX + (10 - currentWidth) / 2, currentY, pagodeBaseZ + (10 - currentDepth) / 2, currentWidth, 1, currentDepth, tierColors[i]);
-            currentY += 1;
-
-            // Pillars for the current tier (simplified to corner blocks)
-            createVoxelBlock(pagodeBaseX + (10 - currentWidth) / 2 + 0.5, currentY, pagodeBaseZ + (10 - currentDepth) / 2 + 0.5, 1, 4, 1, tierColors[i]);
-            createVoxelBlock(pagodeBaseX + (10 - currentWidth) / 2 + currentWidth - 1.5, currentY, pagodeBaseZ + (10 - currentDepth) / 2 + 0.5, 1, 4, 1, tierColors[i]);
-            createVoxelBlock(pagodeBaseX + (10 - currentWidth) / 2 + 0.5, currentY, pagodeBaseZ + (10 - currentDepth) / 2 + currentDepth - 1.5, 1, 4, 1, tierColors[i]);
-            createVoxelBlock(pagodeBaseX + (10 - currentWidth) / 2 + currentWidth - 1.5, currentY, pagodeBaseZ + (10 - currentDepth) / 2 + currentDepth - 1.5, 1, 4, 1, tierColors[i]);
-
-            currentY += 4;
-
-            // Roof of the current tier (layered pyramid shape)
-            let roofWidth = currentWidth + 2;
-            let roofDepth = currentDepth + 2;
-            for (let r = 0; r < 3; r++) { // 3 layers for the roof, getting smaller
-                createVoxelBlock(pagodeBaseX + (10 - roofWidth) / 2 + r, currentY + r, pagodeBaseZ + (10 - roofDepth) / 2 + r, roofWidth - r * 2, 1, roofDepth - r * 2, roofColor);
-            }
-            currentY += 3;
-
-            // Reduce dimensions for the next tier
-            currentWidth -= 2;
-            currentDepth -= 2;
-        }
-
-        // Small central top spire for the pagode
-        createVoxelBlock(pagodeBaseX + 4.5, currentY, pagodeBaseZ + 4.5, 1, 3, 1, 0xFFD700); // Gold spire
-
-
-        // Cherry Blossom Trees function
-        function createCherryTree(baseX, baseZ, height = 10, canopyRadius = 4) {
-            const trunkColor = 0x8B4513; // Saddle brown
-            const blossomColors = [0xFFC0CB, 0xFFB6C1, 0xFFDAB9, 0xFFA07A]; // Pink, LightPink, PeachPuff, Light Salmon
-            const leafColor = 0x8FBC8F; // Dark Sea Green (for some sparse leaves)
-
-            // Trunk construction
-            for (let y = 0; y < height; y++) {
-                addVoxel(baseX, y + 0.5, baseZ, trunkColor);
-                if (y > height * 0.6 && Math.random() < 0.4) { // Simulate small branches
-                     if (Math.random() < 0.5) addVoxel(baseX + 1, y + 0.5, baseZ, trunkColor);
-                     else addVoxel(baseX - 1, y + 0.5, baseZ, trunkColor);
-                     if (Math.random() < 0.5) addVoxel(baseX, y + 0.5, baseZ + 1, trunkColor);
-                     else addVoxel(baseX, y + 0.5, baseZ - 1, trunkColor);
+                // Trunk
+                for (let y = 0; y < trunkHeight; y++) {
+                    addVoxel(baseX, y, baseZ, trunkColor);
                 }
-            }
 
-            // Canopy construction (sparse spherical cloud of blossoms and leaves)
-            const canopyBaseY = height - 1; // Start canopy slightly below trunk top
-            for (let y = 0; y < canopyRadius * 2; y++) {
-                const currentRadius = canopyRadius - Math.abs(y - canopyRadius + 0.5); // Tapered shape for canopy
-                for (let x = -Math.floor(currentRadius); x <= Math.floor(currentRadius); x++) {
-                    for (let z = -Math.floor(currentRadius); z <= Math.floor(currentRadius); z++) {
-                        // Use a spherical distance check with randomness for a natural look
-                        if (Math.sqrt(x * x + z * z + (y - canopyRadius) * (y - canopyRadius)) <= currentRadius + Math.random() * 0.8 - 0.4) {
-                            const color = Math.random() < 0.85 ? blossomColors[Math.floor(Math.random() * blossomColors.length)] : leafColor; // Mostly blossoms, some leaves
-                            // Add slight random offset for a less grid-like appearance
-                            addVoxel(baseX + x + Math.random() * 0.5 - 0.25, canopyBaseY + y + Math.random() * 0.5 - 0.25, baseZ + z + Math.random() * 0.5 - 0.25, color);
+                // Leaves (simplified blob)
+                const leafSpread = 3;
+                const leafBaseY = trunkHeight - 1;
+                for (let x = -leafSpread; x <= leafSpread; x++) {
+                    for (let z = -leafSpread; z <= leafSpread; z++) {
+                        for (let y = 0; y < leafSpread + 2; y++) {
+                            // Create a roughly spherical shape, denser in the middle
+                            const dist = Math.sqrt(x*x + (y*y)/1.5 + z*z);
+                            if (dist < leafSpread + Math.random() * 0.8) { // Add randomness for more organic shape
+                                const chosenColor = leafColors[Math.floor(Math.random() * leafColors.length)];
+                                addVoxel(baseX + x, leafBaseY + y, baseZ + z, chosenColor);
+                            }
                         }
                     }
                 }
             }
+
+            // Place some trees in the garden
+            createTree(10, 8, false); // Green tree
+            createTree(-8, 12, false); // Green tree
+            createTree(15, -5, true);  // Cherry blossom
+            createTree(-12, -7, true); // Cherry blossom
+            createTree(-5, 5, true);   // Cherry blossom
+            createTree(7, -10, false); // Green tree
+            createTree(-10, 3, true);  // Cherry blossom
         }
 
-        // Place multiple cherry blossom trees around the garden
-        createCherryTree(20, 15, 12, 5);
-        createCherryTree(-25, 20, 10, 4);
-        createCherryTree(10, -30, 11, 4);
-        createCherryTree(-15, -20, 13, 6);
-        createCherryTree(30, 0, 9, 3);
-        createCherryTree(0, 25, 10, 4);
-        createCherryTree(-35, 5, 11, 5);
-        createCherryTree(18, -10, 10, 4);
-        createCherryTree(-5, 40, 12, 5);
-        createCherryTree(40, -5, 10, 4);
-
-        // Garden elements: Bushes function
-        const bushColor = 0x228B22; // Forest green
-        const bushFlowerColor = 0xFF69B4; // Hot Pink for bush flowers
-        function createBush(x, z, size = 3) {
-            const startY = 0.5; // Bush sits on the ground
-            for (let y = 0; y < size; y++) {
-                const currentRadius = Math.ceil(size / 2) - Math.abs(y - Math.floor(size / 2));
-                for (let ix = -Math.floor(currentRadius); ix <= Math.floor(currentRadius); ix++) {
-                    for (let iz = -Math.floor(currentRadius); iz <= Math.floor(currentRadius); iz++) {
-                        if (Math.sqrt(ix * ix + iz * iz) <= currentRadius + 0.5 && Math.random() > 0.2) {
-                            const color = Math.random() < 0.1 ? bushFlowerColor : bushColor; // Add some flowers to bushes
-                            addVoxel(x + ix, startY + y, z + iz, color);
-                        }
-                    }
-                }
-            }
-        }
-
-        // Place various bushes
-        createBush(15, 5, 4);
-        createBush(-10, 10, 3);
-        createBush(-5, -15, 5);
-        createBush(25, -10, 3);
-        createBush(-30, -10, 4);
-        createBush(5, 30, 3);
-        createBush(35, 15, 4);
-        createBush(-20, -30, 5);
-
-        // Path: A simple straight path from the pagode towards a viewing point
-        const pathColor = 0xA9A9A9; // Dark grey for the path stones
-        const pathWidth = 3;
-        const pathLength = 30;
-        const pathStartX = pagodeBaseX + (10 - pathWidth) / 2; // Center the path with pagode base
-        const pathStartZ = pagodeBaseZ + 10; // Start path from the front of the pagode
-        for (let i = 0; i < pathLength; i++) {
-            for (let j = 0; j < pathWidth; j++) {
-                addVoxel(pathStartX + j, 0.5, pathStartZ + i, pathColor);
-            }
-        }
-
-        // After all voxels are added, update the instanced mesh's count and attributes
-        instancedMesh.count = voxelCount;
-        instancedMesh.instanceMatrix.needsUpdate = true;
-        instancedMesh.instanceColor.needsUpdate = true; // Important for per-instance colors
-
-        // --- Animation Loop --- //
+        // Animation loop
         function animate() {
             requestAnimationFrame(animate);
-            controls.update(); // Only required if controls.enableDamping or controls.autoRotate are set
+            controls.update(); // Only required if controls.enableDamping or controls.autoRotate are set to true
             renderer.render(scene, camera);
         }
-        animate();
 
-        // Handle window resize events to maintain aspect ratio and canvas size
+        // Handle window resize
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
+
+        init();
+        animate();
     </script>
 </body>
 </html>
