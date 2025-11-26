@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Horário Atual</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #282c34; /* Dark background */
+            color: #61dafb; /* Light blue text */
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+
+        #clock {
+            font-size: 5em; /* Large font size */
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(97, 218, 251, 0.7); /* Subtle glow */
+            padding: 20px 40px;
+            border: 2px solid #61dafb;
+            border-radius: 15px;
+            background-color: rgba(0, 0, 0, 0.3); /* Slightly transparent background */
+            box-shadow: 0 0 20px rgba(97, 218, 251, 0.5);
+            transition: transform 0.3s ease-in-out;
+        }
+
+        #clock:hover {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div id="clock"></div>
+
+    <script>
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('clock').textContent = `${hours}:${minutes}:${seconds}`;
+        }
+
+        // Update the clock immediately and then every second
+        updateClock();
+        setInterval(updateClock, 1000);
+    </script>
+</body>
+</html>
