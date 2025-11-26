@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Posto Voxel Matrix</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Consolas', 'Courier New', monospace; }
+        #canvas-container { width: 100vw; height: 100vh; }
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #0f0;
+            background: rgba(0, 20, 0, 0.8);
+            border: 1px solid #0f0;
+            padding: 15px;
+            border-radius: 4px;
+            box-shadow: 0 0 10px #0f0;
+            pointer-events: none;
+        }
+        h1 { margin: 0 0 5px 0; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 2px; }
+        p { margin: 0; font-size: 0.8rem; opacity: 0.8; }
+        #loading {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: #000;
+            background: #0f0;
+            padding: 20px 40px;
+            font-weight: bold;
+            font-family: monospace;
+            box-shadow: 0 0 20px #0f0;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+
+<div id="loading">CARREGANDO A MATRIX...</div>
+<div id="ui-layer">
+    <h1>Posto 0101</h1>
+    <p>MOUSE ESQUERDO: ORBITAR</p>
+    <p>MOUSE DIREITO: PAN</p>
+    <p>SCROLL: ZOOM</p>
+</div>
+<div id="canvas-container"></div>
+
+<!-- Three.js e OrbitControls -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+<script>
+    // --- Configurações Matrix ---
+    const TAMANHO_VOXEL = 1;
+    
+    // Paleta Cyberpunk / Matrix
+    const CORES = {
+        PRETO: 0x050505,
+        ASFALTO: 0x1a1a1a,
+        CONCRETO: 0x333333,
+        METAL_ESCURO: 0x222222,
+        NEON_VERDE: 0x00ff00,
+        NEON_VERDE_ESCURO: 0x008800,
+        NEON_CIANO: 0x00ffff,
+        NEON_VERMELHO: 0xff0033, // Luzes de freio
+        VIDRO: 0x112211,
+        LUZ_BRANCA: 0xccffcc,
+        PAREDE_LOJA: 0x2a2a2a,
+        LAMPADA: 0xffeebb // Nova cor para lâmpada comum
+    };
+
+    class ConstrutorVoxel {
+        constructor() {
+            this.voxels = []; 
+        }
+
+        add(x, y, z, cor) {
+            this.voxels.push({ x: Math.round(x), y: Math.round(y), z: Math.round(z), c: cor });
+        }
+    }
+
+    const construtor = new ConstrutorVoxel();
+
+    // --- Utilitários de Construção ---
+    function preencherCaixa(x, y, z, w, h, d, cor) {
+        for(let i=0; i<w; i++) {
+            for(let j=0; j<h; j++) {
+                for(let k=0; k<d; k++) {
+                    construtor.add(x+i, y+j, z+k, cor);
+                }
+            }
+        }
+    }
+
+    // --- Geração de Cenário ---
+
+    // 1. Chão e Estrada
+    function construirChao(largura, profundidade) {
+        for (let x = -largura / 2; x < largura / 2; x++) {
+            for (let z = -profundidade / 2; z < profundidade / 2; z++) {
+                let cor = CORES.ASFALTO;
+                
+                // Marcações de estrada
+                if (Math.abs(z) < 4) { // Estrada principal passando na frente
+                    if (Math.abs(z) < 0.5 && x % 4 !== 0) cor = 0xffff00; // Faixa amarela
+                } else {
+                    // Área do posto
+                    if (x > -20 && x < 20 && z > 5 && z < 35) cor = CORES.CONCRETO;
+                }
+
+                // Efeito de "Grid" sutil no chão longe
+                if ((x % 10 === 0 || z % 10 === 0) && cor === CORES.ASFALTO) {
+                    cor = 0x111111; 
+                }
+
+                construtor.add(x, 0, z, cor);
+            }
+        }
+    }
+
+    // 2. Cobertura do Posto e Bombas
+    function construirPosto(x, y, z) {
+        // Colunas
+        preencherCaixa(x-10, y, z, 2, 8, 2, CORES.METAL_ESCURO);
+        preencherCaixa(x+10, y, z, 2, 8, 2, CORES.METAL_ESCURO);
+        
+        // Teto Grande
+        preencherCaixa(x-15, y+8, z-6, 34, 2, 14, CORES.METAL_ESCURO);
+        
+        // Faixa de Luz (Lâmpadas) no teto - Agora amarelo/branco
+        preencherCaixa(x-15, y+8, z-6, 34, 1, 1, CORES.LAMPADA);
+        preencherCaixa(x-15, y+8, z+7, 34, 1, 1, CORES.LAMPADA);
+        preencherCaixa(x-15, y+8, z-6, 1, 1, 14, CORES.LAMPADA);
+        preencherCaixa(x+18, y+8, z-6, 1, 1, 14, CORES.LAMPADA);
+
+        // Bombas de Gasolina
+        const posBombas = [-6, 0, 6];
+        posBombas.forEach(bx => {
+            preencherCaixa(x+bx, y, z, 3, 4, 2, CORES.METAL_ESCURO); // Base
+            construtor.add(x+bx, y+2, z-1, CORES.NEON_VERDE); // Display (mantém tech)
+            construtor.add(x+bx+2, y+2, z-1, CORES.NEON_VERDE); // Display
+            construtor.add(x+bx+1, y+4, z, CORES.NEON_VERDE_ESCURO); // Topo
+        });
+    }
+
+    // 3. Loja de Conveniência
+    function construirLoja(x, y, z) {
+        // Estrutura principal
+        preencherCaixa(x, y, z, 20, 7, 10, CORES.PAREDE_LOJA);
+        
+        // Vitrine de Vidro
+        preencherCaixa(x+2, y+1, z-1, 16, 4, 1, CORES.VIDRO);
+        
+        // Letreiro "MART" em binário
+        const letreiroY = y + 7;
+        construtor.add(x+5, letreiroY, z, CORES.NEON_VERDE); 
+        construtor.add(x+7, letreiroY, z, CORES.NEON_VERDE);
+        construtor.add(x+9, letreiroY, z, 0x003300); // Apagado
+        construtor.add(x+11, letreiroY, z, CORES.NEON_VERDE);
+
+        // Interior básico (luzes)
+        construtor.add(x+5, y+3, z+5, CORES.LUZ_BRANCA);
+        construtor.add(x+15, y+3, z+5, CORES.LUZ_BRANCA);
+    }
+
+    // 4. Carros Futuristas
+    function construirCarro(x, y, z, cor, direcao) {
+        // Chassi
+        if(direcao === 'H') { // Horizontal
+            preencherCaixa(x-4, y+1, z-2, 9, 2, 4, cor);
+            // Cabine
+            preencherCaixa(x-2, y+2, z-2, 4, 2, 4, CORES.VIDRO);
+            // Rodas (sem rodas, flutuando levemente ou rodas pretas)
+            preencherCaixa(x-3, y, z-2, 2, 1, 1, 0x000000);
+            preencherCaixa(x+2, y, z-2, 2, 1, 1, 0x000000);
+            preencherCaixa(x-3, y, z+1, 2, 1, 1, 0x000000);
+            preencherCaixa(x+2, y, z+1, 2, 1, 1, 0x000000);
+            
+            // Luzes
+            construtor.add(x+4, y+1, z-1, CORES.NEON_CIANO); // Farol
+            construtor.add(x+4, y+1, z, CORES.NEON_CIANO);
+            construtor.add(x-4, y+1, z-1, CORES.NEON_VERMELHO); // Traseira
+            construtor.add(x-4, y+1, z, CORES.NEON_VERMELHO);
+
+        } else { // Vertical
+            preencherCaixa(x-2, y+1, z-4, 4, 2, 9, cor);
+            preencherCaixa(x-2, y+2, z-2, 4, 2, 5, CORES.VIDRO);
+            // Luzes
+            construtor.add(x-1, y+1, z-4, CORES.NEON_CIANO);
+            construtor.add(x, y+1, z-4, CORES.NEON_CIANO);
+        }
+    }
+
+    // --- Montagem do Cenário ---
+    
+    // Chão
+    construirChao(60, 60);
+
+    // Estruturas
+    construirPosto(0, 0, 10);
+    construirLoja(-5, 0, 25);
+
+    // Carros
+    // Carro abastecendo
+    construirCarro(-6, 0, 10, 0x3333cc, 'V');
+    
+    // Carros na estrada
+    construirCarro(15, 0, -2, 0xcc3333, 'H');
+    construirCarro(-20, 0, 2, 0xcccc33, 'H');
+
+    // Detalhes extras: Postes de luz
+    function construirPosteLuz(x, z) {
+        preencherCaixa(x, 0, z, 1, 10, 1, CORES.METAL_ESCURO);
+        preencherCaixa(x, 10, z, 3, 1, 1, CORES.METAL_ESCURO);
+        construtor.add(x+2, 9, z, CORES.LUZ_BRANCA);
+        // Cone de luz simulado com voxels translúcidos seria complexo, vamos usar PointLight depois
+    }
+    construirPosteLuz(-25, -25);
+    construirPosteLuz(25, -25);
+
+
+    // --- Setup Three.js ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000500); // Preto esverdeado
+    // Reduzindo neblina para ver mais longe
+    scene.fog = new THREE.FogExp2(0x000500, 0.015);
+
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(-30, 20, 40);
+    camera.lookAt(0, 5, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxPolarAngle = Math.PI / 2 - 0.05; // Não deixar ir para baixo do chão
+
+    // --- Iluminação ---
+    // AUMENTANDO LUZ AMBIENTE: Cor mais clara e maior intensidade para não ficar tudo escuro
+    // Mudando para um cinza neutro e aumentando a intensidade para clarear a cena
+    const luzAmbiente = new THREE.AmbientLight(0xAAAAAA, 1.5);
+    scene.add(luzAmbiente);
+
+    // Luz principal (Luar) - Alterado de Verde (0x00ff00) para Azulado/Neutro (0xaaccff)
+    const luzDir = new THREE.DirectionalLight(0xaaccff, 0.5);
+    luzDir.position.set(-20, 50, -20);
+    luzDir.castShadow = true;
+    scene.add(luzDir);
+
+    // Luzes Pontuais (Neons e Lâmpadas)
+    const lights = [
+        // Luz do teto do posto: Branco amarelado (lâmpada fluorescente e acolhedora), mais forte e abrangente
+        { x: 0, y: 7, z: 10, c: 0xffeebb, i: 1.5, d: 35 }, 
+        // Luz da loja: Amarelo suave, iluminando a frente
+        { x: 5, y: 5, z: 30, c: 0xffdea0, i: 1.2, d: 25 }, 
+        
+        { x: -23, y: 9, z: -25, c: 0xffffff, i: 0.8, d: 20 }, // Poste Rua
+        { x: -6, y: 2, z: 10, c: 0x00ffff, i: 2, d: 8 } // Carro abastecendo (glow)
+    ];
+
+    lights.forEach(l => {
+        const pl = new THREE.PointLight(l.c, l.i, l.d);
+        pl.position.set(l.x, l.y, l.z);
+        scene.add(pl);
+    });
+
+
+    // --- Renderização dos Voxels Estáticos ---
+    const geometriaVoxel = new THREE.BoxGeometry(TAMANHO_VOXEL, TAMANHO_VOXEL, TAMANHO_VOXEL);
+    const materialVoxel = new THREE.MeshStandardMaterial({ 
+        roughness: 0.2, 
+        metalness: 0.8 
+    });
+    
+    const malhaMundo = new THREE.InstancedMesh(geometriaVoxel, materialVoxel, construtor.voxels.length);
+    malhaMundo.castShadow = true;
+    malhaMundo.receiveShadow = true;
+
+    const dummy = new THREE.Object3D();
+    const corTemp = new THREE.Color();
+
+    construtor.voxels.forEach((v, i) => {
+        dummy.position.set(v.x, v.y, v.z);
+        dummy.updateMatrix();
+        malhaMundo.setMatrixAt(i, dummy.matrix);
+        corTemp.setHex(v.c);
+        // Se for neon, aumentar emissividade (gambiarra visual)
+        if (v.c === CORES.NEON_VERDE || v.c === CORES.NEON_CIANO) {
+            // Em StandardMaterial, a cor define albedo, brilho real precisa de emissive map ou bloom (post-processing)
+            // Aqui vamos apenas clarear
+            corTemp.addScalar(0.2); 
+        }
+        malhaMundo.setColorAt(i, corTemp);
+    });
+    scene.add(malhaMundo);
+
+
+    // --- CHUVA MATRIX (Partículas Voxel) ---
+    const contaChuva = 3000;
+    // Voxels menores para a chuva
+    const geomChuva = new THREE.BoxGeometry(0.15, 0.8, 0.15); 
+    const matChuva = new THREE.MeshBasicMaterial({ 
+        color: 0x00ff00, 
+        transparent: true, 
+        opacity: 0.8 
+    });
+    const sistemaChuva = new THREE.InstancedMesh(geomChuva, matChuva, contaChuva);
+    
+    const chuvaDados = [];
+
+    for(let i=0; i<contaChuva; i++) {
+        let x = (Math.random() - 0.5) * 80;
+        let y = Math.random() * 40;
+        let z = (Math.random() - 0.5) * 80;
+        
+        dummy.position.set(x, y, z);
+        dummy.updateMatrix();
+        sistemaChuva.setMatrixAt(i, dummy.matrix);
+        
+        chuvaDados.push({
+            x: x, y: y, z: z,
+            velocidade: Math.random() * 0.5 + 0.2
+        });
+    }
+    scene.add(sistemaChuva);
+
+
+    // Remover loading
+    document.getElementById('loading').style.display = 'none';
+
+    // --- Animação ---
+    let tempo = 0;
+    function animar() {
+        requestAnimationFrame(animar);
+        controls.update();
+        tempo += 0.01;
+
+        // Animar chuva
+        for(let i=0; i<contaChuva; i++) {
+            let p = chuvaDados[i];
+            p.y -= p.velocidade;
+
+            // Resetar chuva
+            if(p.y < 0) {
+                p.y = 40;
+                // Randomizar levemente a posição x/z ao respawnar para não ficar estático
+                p.x = (Math.random() - 0.5) * 80; 
+            }
+
+            dummy.position.set(p.x, p.y, p.z);
+            dummy.updateMatrix();
+            sistemaChuva.setMatrixAt(i, dummy.matrix);
+        }
+        sistemaChuva.instanceMatrix.needsUpdate = true;
+        
+        // Piscar levemente a luz do posto para efeito cyberpunk
+        if (Math.random() > 0.95) {
+             luzDir.intensity = 0.5 + (Math.random() * 0.2);
+        }
+
+        renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    animar();
+
+</script>
+</body>
+</html>
