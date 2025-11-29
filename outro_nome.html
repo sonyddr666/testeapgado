@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Outro Exemplo Voxel</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #e0e0e0;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            perspective: 800px;
+        }
+        .info {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .info a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        .info a:hover {
+            text-decoration: underline;
+        }
+        .voxel-cube {
+            width: 50px;
+            height: 50px;
+            background-color: #4CAF50; /* Voxel verde */
+            position: relative;
+            transform-style: preserve-3d;
+            animation: rotateCube 5s infinite linear;
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.4);
+            border: 2px solid rgba(0,0,0,0.2);
+        }
+
+        @keyframes rotateCube {
+            from { transform: rotateX(0deg) rotateY(0deg); }
+            to { transform: rotateX(360deg) rotateY(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="info">
+        <h1>Este é outro exemplo Voxel!</h1>
+        <p>Veja a abelha em voxel completa em <a href="abelha.html">abelha.html</a></p>
+    </div>
+    <div class="voxel-cube"></div>
+</body>
+</html>
