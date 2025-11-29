@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abelha em Voxel</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+            margin: 0;
+            overflow: hidden;
+            perspective: 1000px; /* Adiciona perspectiva ao corpo */
+        }
+        .voxel-scene {
+            position: relative;
+            transform-style: preserve-3d;
+            transform: rotateX(30deg) rotateY(45deg); /* Rotação inicial para melhor visualização 3D */
+            animation: rotateBee 10s infinite linear; /* Rotação sutil opcional */
+            transform-origin: center center;
+        }
+        @keyframes rotateBee {
+            from { transform: rotateX(30deg) rotateY(0deg); }
+            to { transform: rotateX(30deg) rotateY(360deg); }
+        }
+
+        .voxel {
+            --size: 20px; /* Tamanho base de um voxel */
+            width: var(--size);
+            height: var(--size);
+            position: absolute;
+            background-color: var(--voxel-color);
+            border: 1px solid rgba(0,0,0,0.1);
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3); /* Efeito de profundidade simples */
+            transform-style: preserve-3d;
+        }
+
+        /* Cores para a abelha */
+        .yellow { --voxel-color: #ffda00; } /* Amarelo da abelha */
+        .black { --voxel-color: #333; } /* Preto da abelha */
+        .gray { --voxel-color: rgba(200, 200, 200, 0.4); border: 1px solid rgba(255,255,255,0.2); } /* Para as asas */
+        .brown { --voxel-color: #8b4513; } /* Para o ferrão */
+    </style>
+</head>
+<body>
+    <div class="voxel-scene">
+        <!-- Cabeça (frente da abelha) -->
+        <div class="voxel black" style="transform: translate3d(0px, 0px, -20px);"></div>
+        
+        <!-- Segmentos do corpo -->
+        <div class="voxel yellow" style="transform: translate3d(0px, 0px, 0px);"></div>
+        <div class="voxel black" style="transform: translate3d(0px, 0px, 20px);"></div>
+        <div class="voxel yellow" style="transform: translate3d(0px, 0px, 40px);"></div>
+        
+        <!-- Asas (acima do primeiro segmento do corpo, ligeiramente para os lados) -->
+        <div class="voxel gray" style="transform: translate3d(-30px, -10px, 10px); width:40px; height:10px;"></div>
+        <div class="voxel gray" style="transform: translate3d(10px, -10px, 10px); width:40px; height:10px;"></div>
+        
+        <!-- Ferrão (traseira da abelha) -->
+        <div class="voxel brown" style="transform: translate3d(0px, 0px, 60px); width:10px; height:10px;"></div>
+    </div>
+</body>
+</html>
